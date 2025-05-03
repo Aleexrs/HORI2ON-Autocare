@@ -1,0 +1,112 @@
+import streamlit as st
+import matplotlib.pyplot as plt
+
+# ----------- ALGORITMOS EXISTENTES -----------
+
+LIMITE_PH_MIN = 6.5
+LIMITE_PH_MAX = 8.5
+LIMITE_TEMP_MIN = 18
+LIMITE_TEMP_MAX = 32
+LIMITE_CO2_MAX = 1000
+
+def revisar_parametros(sensor_data):
+    alertas = []
+
+    ph = sensor_data.get('ph')
+    temperatura = sensor_data.get('temperatura')
+    co2 = sensor_data.get('co2')
+
+    if ph < LIMITE_PH_MIN or ph > LIMITE_PH_MAX:
+        alertas.append(f'⚠️ Alerta: pH {ph} fuera de rango ({LIMITE_PH_MIN}-{LIMITE_PH_MAX}).')
+    if temperatura < LIMITE_TEMP_MIN or temperatura > LIMITE_TEMP_MAX:
+        alertas.append(f'⚠️ Alerta: Temperatura {temperatura}°C fuera de rango ({LIMITE_TEMP_MIN}-{LIMITE_TEMP_MAX}°C).')
+    if co2 > LIMITE_CO2_MAX:
+        alertas.append(f'⚠️ Alerta: CO₂ {co2} ppm supera el máximo permitido ({LIMITE_CO2_MAX} ppm).')
+
+    return alertas if alertas else ["✅ Todo OK. Parámetros dentro de rango."]
+
+def predecir_fallo(historico_ph, historico_temp):
+    if len(historico_ph) < 5 or len(historico_temp) < 5:
+        return ["⚠️ No hay suficientes datos históricos para hacer predicción."]
+
+    tendencia_ph = historico_ph[-1] - historico_ph[0]
+    tendencia_temp = historico_temp[-1] - historico_temp[0]
+    alertas = []
+
+    if abs(tendencia_ph) > 1:
+        alertas.append("⚠️ Advertencia: Desviación significativa en pH.")
+    if tendencia_temp > 5:
+        alertas.append("⚠️ Advertencia: Aumento rápido de temperatura.")
+
+    return alertas if alertas else ["✅ Tendencias estables. No se requieren acciones."]
+
+# ----------- INTERFAZ STREAMLIT -----------
+
+st.set_page_config(page_title="Horizon AutoCare", page_icon="🌱", layout="wide")
+
+st.title("🌱 Horizon AutoCare Dashboard")
+st.markdown("### Monitoreo y Mantenimiento Predictivo de Fotobiorreactores")
+
+# ----- INPUTS -----
+
+st.sidebar.header("📊 Datos actuales del sensor")
+ph = st.sidebar.number_input("pH", min_value=0.0, max_value=14.0, value=7.5)
+temperatura = st.sidebar.number_input("Temperatura (°C)", min_value=-10, max_value=50, value=25)
+co2 = st.sidebar.number_input("CO₂ (ppm)", min_value=0, max_value=5000, value=800)
+
+datos_sensores = {'ph': ph, 'temperatura': temperatura, 'co2': co2}
+
+# ----- ALERTAS EN TIEMPO REAL -----
+
+st.subheader("🔎 Revisión en tiempo real")
+alertas_actuales = revisar_parametros(datos_sensores)
+
+for alerta in alertas_actuales:
+    if "✅" in alerta:
+        st.success(alerta)
+    else:
+        st.error(alerta)
+
+# ----- DATOS HISTÓRICOS -----
+
+st.sidebar.header("📈 Datos históricos para predicción")
+ph_historico = st.sidebar.text_input("Histórico pH (separado por comas)", "7.0,7.2,7.5,7.8,8.3")
+temp_historico = st.sidebar.text_input("Histórico Temperatura (°C, separado por comas)", "22,23,24,27,29")
+
+try:
+    ph_h = [float(x.strip()) for x in ph_historico.split(",")]
+    temp_h = [float(x.strip()) for x in temp_historico.split(",")]
+
+    # ----- PREDICCIÓN DE FALLOS -----
+
+    st.subheader("🔮 Predicción de fallos futuros")
+    alertas_pred = predecir_fallo(ph_h, temp_h)
+
+    for alerta in alertas_pred:
+        if "✅" in alerta:
+            st.success(alerta)
+        else:
+            st.warning(alerta)
+
+    # ----- GRÁFICAS -----
+
+    st.subheader("📊 Gráficas de tendencias históricas")
+
+    fig, ax = plt.subplots()
+    ax.plot(range(len(ph_h)), ph_h, marker='o', label='pH', color='green')
+    ax.plot(range(len(temp_h)), temp_h, marker='o', label='Temperatura (°C)', color='orange')
+    ax.set_xlabel("Mediciones históricas")
+    ax.set_ylabel("Valores")
+    ax.set_title("Tendencias de pH y Temperatura")
+    ax.legend()
+    st.pyplot(fig)
+
+except ValueError:
+    st.error("Por favor, introduce valores numéricos válidos separados por comas en los históricos.")
+
+st.markdown("---")
+st.caption("Desarrollado por HORI2ON ")
+
+streamlit
+matplotlib
+
